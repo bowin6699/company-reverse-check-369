@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
@@ -7,23 +9,47 @@ import {
   PenTool, 
   Shield,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react'
-import { useState } from 'react'
 import Home from './pages/Home'
 import CompanyDetail from './pages/CompanyDetail'
 import SubmitReview from './pages/SubmitReview'
 import AdminDashboard from './pages/AdminDashboard'
 import DataAnalytics from './pages/DataAnalytics'
+import Login from './pages/Login'
+
 
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const navigate = useNavigate()
+
+  // 检查登录状态
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    setIsLoggedIn(loggedIn)
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn')
+    localStorage.removeItem('loginTime')
+    setIsLoggedIn(false)
+    navigate('/')
+  }
+
+  const handleAdminClick = (e: React.MouseEvent) => {
+    if (!isLoggedIn) {
+      e.preventDefault()
+      navigate('/login')
+    }
+  }
 
   const navItems = [
     { to: '/', label: '首页', icon: Building2 },
     { to: '/analytics', label: '数据分析', icon: BarChart3 },
     { to: '/submit', label: '提交评价', icon: PenTool },
-    { to: '/admin', label: '后台管理', icon: Shield },
+    { to: isLoggedIn ? '/admin' : '/login', label: '后台管理', icon: Shield, protected: true },
   ]
 
   return (
@@ -50,22 +76,42 @@ function App() {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map(({ to, label, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`
-                  }
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </NavLink>
+              {navItems.map(({ to, label, icon: Icon, protected: isProtected }) => (
+                <div key={to} className="relative group">
+                  <NavLink
+                    to={to}
+                    onClick={isProtected ? handleAdminClick : undefined}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                    {isProtected && isLoggedIn && (
+                      <span className="w-2 h-2 bg-green-500 rounded-full" title="已登录" />
+                    )}
+                  </NavLink>
+                  {!isLoggedIn && isProtected && (
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                      需要登录 🔒
+                    </span>
+                  )}
+                </div>
               ))}
+              {isLoggedIn && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-all ml-2"
+                  title="退出登录"
+                >
+                  <LogOut className="w-4 h-4" />
+                  退出
+                </button>
+              )}
             </nav>
 
             {/* Mobile Menu Button */}
@@ -86,7 +132,7 @@ function App() {
             className="md:hidden border-t border-gray-100 bg-white"
           >
             <nav className="flex flex-col p-4 gap-1">
-              {navItems.map(({ to, label, icon: Icon }) => (
+              {navItems.map(({ to, label, icon: Icon, protected: isProtected }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -101,8 +147,18 @@ function App() {
                 >
                   <Icon className="w-5 h-5" />
                   {label}
+                  {isProtected && !isLoggedIn && <span className="text-xs text-gray-400">🔒</span>}
                 </NavLink>
               ))}
+              {isLoggedIn && (
+                <button
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500"
+                >
+                  <LogOut className="w-5 h-5" />
+                  退出登录
+                </button>
+              )}
             </nav>
           </motion.div>
         )}
@@ -114,7 +170,10 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/company/:id" element={<CompanyDetail />} />
           <Route path="/submit" element={<SubmitReview />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={
+            isLoggedIn ? <AdminDashboard /> : <Login />
+          } />
           <Route path="/analytics" element={<DataAnalytics />} />
         </Routes>
       </main>
@@ -128,7 +187,7 @@ function App() {
                 © 2025 求职者反背调调查网 · 让求职者看清企业真实面貌
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                所有评价均经过人工审核，保护用户隐私
+                所有评价均经过人工审核，保护用户隐私 · 已收录 {8} 家企业 · {9833}+ 条真实评价
               </p>
             </div>
             <div className="flex gap-6 text-sm text-gray-500">
